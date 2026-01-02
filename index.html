@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>365天支付挑戰</title>
+    <title>365天支付挑戰-隨機盲盒版</title>
     <style>
         :root {
             --bg-color: #f4eee8;
@@ -28,7 +28,6 @@
         .header h1 { font-size: 32px; letter-spacing: 10px; margin: 0; font-weight: 300; }
         .header p { font-size: 13px; font-style: italic; opacity: 0.7; margin-top: 15px; }
 
-        /* 核心進度卡片 */
         .main-card {
             background: var(--card-bg);
             backdrop-filter: blur(10px);
@@ -47,7 +46,6 @@
         .progress-bar-bg { width: 100%; height: 12px; background: #eee5de; border-radius: 10px; }
         .progress-bar-fill { height: 100%; background: var(--accent-color); width: 0%; border-radius: 10px; transition: 1s; }
 
-        /* 盲盒網格 */
         .grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -67,19 +65,19 @@
             cursor: pointer;
             transition: 0.3s;
             border: 1px solid rgba(255,255,255,0.5);
+            position: relative;
+            overflow: hidden;
         }
 
         .box span { font-size: 10px; color: #c2b7b0; margin-bottom: 5px; }
-        .box b { font-size: 18px; color: transparent; transition: 0.3s; }
-        .box::after { content: "🐽"; font-size: 20px; position: absolute; transition: 0.3s; }
+        .box b { font-size: 18px; color: transparent; z-index: 2; }
+        .box .icon { font-size: 20px; position: absolute; z-index: 1; transition: 0.3s; }
 
-        /* 開啟後的樣式 */
         .box.done { background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.03); }
         .box.done b { color: var(--primary-text); }
-        .box.done::after { opacity: 0; }
+        .box.done .icon { opacity: 0; transform: scale(0.5); }
         .box.done span { color: var(--accent-color); }
 
-        /* 底部結算浮窗 */
         .footer-panel {
             position: fixed;
             bottom: 30px;
@@ -93,6 +91,7 @@
             width: 85%;
             max-width: 400px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            z-index: 100;
         }
 
         .footer-info div { font-size: 12px; opacity: 0.7; margin-bottom: 5px; }
@@ -113,17 +112,6 @@
         }
         
         .btn-confirm svg { width: 20px; margin-bottom: 8px; fill: white; }
-
-        /* 抽獎按鈕樣式 */
-        .draw-btn {
-            margin-bottom: 20px;
-            background: none;
-            border: 1px solid var(--accent-color);
-            padding: 8px 25px;
-            border-radius: 20px;
-            color: var(--primary-text);
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -143,17 +131,17 @@
         </div>
     </div>
 
-    <button class="draw-btn" onclick="randomDraw()">🎲 隨機抽取 LuLu 盲盒</button>
-
     <div class="grid" id="grid"></div>
 
-    <div style="height: 150px;"></div> <div class="footer-panel">
+    <div style="height: 180px;"></div>
+
+    <div class="footer-panel">
         <div class="footer-info">
             <div>支付金額</div>
             <b id="total">$ 0</b>
             <span class="remain">支付餘額 $ <span id="remaining">66,795</span></span>
         </div>
-        <button class="btn-confirm" onclick="alert('今天也要加油喔！🐽')">
+        <button class="btn-confirm" onclick="alert('🐷 LuLu豬：今天也存得好棒！')">
             <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
             確認付款
         </button>
@@ -161,47 +149,69 @@
 
     <script>
         const grid = document.getElementById('grid');
-        let saved = JSON.parse(localStorage.getItem('lulu_luxury_data')) || [];
         const TOTAL_SUM = 66795;
 
+        // 1. 獲取已存天數的索引
+        let savedIndices = JSON.parse(localStorage.getItem('lulu_saved_indices')) || [];
+
+        // 2. 獲取或生成隨機金額對照表 (Map)
+        let amountMap = JSON.parse(localStorage.getItem('lulu_amount_map'));
+        
+        if (!amountMap) {
+            // 生成 1-365 並打亂
+            amountMap = Array.from({length: 365}, (_, i) => i + 1);
+            for (let i = amountMap.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [amountMap[i], amountMap[j]] = [amountMap[j], amountMap[i]];
+            }
+            localStorage.setItem('lulu_amount_map', JSON.stringify(amountMap));
+        }
+
         function update() {
-            const sum = saved.reduce((a, b) => a + b, 0);
-            const count = saved.length;
+            let currentTotal = 0;
+            // 根據已存的 index 去加總對應的隨機金額
+            savedIndices.forEach(index => {
+                currentTotal += amountMap[index];
+            });
+
+            const count = savedIndices.length;
             const p = ((count / 365) * 100).toFixed(1);
 
-            document.getElementById('total').innerText = '$ ' + sum.toLocaleString();
-            document.getElementById('remaining').innerText = (TOTAL_SUM - sum).toLocaleString();
+            document.getElementById('total').innerText = '$ ' + currentTotal.toLocaleString();
+            document.getElementById('remaining').innerText = (TOTAL_SUM - currentTotal).toLocaleString();
             document.getElementById('percent').innerText = p;
             document.getElementById('count').innerText = count;
             document.getElementById('pb').style.width = p + '%';
         }
 
-        for (let i = 1; i <= 365; i++) {
+        // 生成 365 個格子
+        for (let i = 0; i < 365; i++) {
             const box = document.createElement('div');
-            box.className = 'box' + (saved.includes(i) ? ' done' : '');
+            box.className = 'box' + (savedIndices.includes(i) ? ' done' : '');
             box.id = 'box-' + i;
-            box.innerHTML = `<span>D${i}</span><b>$${i}</b>`;
+            
+            // 天數按順序 D1, D2... 但對應金額 amountMap[i] 是隨機的
+            const dayNumber = i + 1;
+            const randomAmount = amountMap[i];
+
+            box.innerHTML = `
+                <span>DAY ${dayNumber}</span>
+                <div class="icon">🐽</div>
+                <b>$${randomAmount}</b>
+            `;
+
             box.onclick = () => {
-                if (saved.includes(i)) {
-                    saved = saved.filter(n => n !== i);
+                if (savedIndices.includes(i)) {
+                    savedIndices = savedIndices.filter(n => n !== i);
                     box.classList.remove('done');
                 } else {
-                    saved.push(i);
+                    savedIndices.push(i);
                     box.classList.add('done');
                 }
-                localStorage.setItem('lulu_luxury_data', JSON.stringify(saved));
+                localStorage.setItem('lulu_saved_indices', JSON.stringify(savedIndices));
                 update();
             };
             grid.appendChild(box);
-        }
-
-        function randomDraw() {
-            const pool = Array.from({length: 365}, (_, i) => i + 1).filter(i => !saved.includes(i));
-            if (pool.length === 0) return alert("完成挑戰囉！");
-            const pick = pool[Math.floor(Math.random() * pool.length)];
-            const el = document.getElementById('box-' + pick);
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => alert(`🎲 今日 LuLu 盲盒金額：$${pick}`), 500);
         }
 
         update();
