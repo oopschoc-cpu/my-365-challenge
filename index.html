@@ -1,59 +1,210 @@
-<script>
-    const grid = document.getElementById('grid');
-    let saved = JSON.parse(localStorage.getItem('lulu_savings')) || [];
-    const TOTAL_GOAL = 66795;
-    
-    function updateDisplay() {
-        const sum = saved.reduce((a, b) => a + b, 0);
-        const count = saved.length;
-        const percentage = ((count / 365) * 100).toFixed(1);
-        
-        document.getElementById('total').innerText = '$' + sum.toLocaleString();
-        document.getElementById('remaining').innerText = '$' + (TOTAL_GOAL - sum).toLocaleString();
-        document.getElementById('percent').innerText = percentage + '%';
-        document.getElementById('pb').style.width = percentage + '%';
-    }
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>365天支付挑戰</title>
+    <style>
+        :root {
+            --bg-color: #f4eee8;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --primary-text: #8c7e74;
+            --accent-color: #d8c3b8;
+            --highlight: #bfa094;
+        }
 
-    for (let i = 1; i <= 365; i++) {
-        const box = document.createElement('div');
-        // 檢查是否已存，決定初始狀態
-        box.className = 'box' + (saved.includes(i) ? ' done' : '');
-        box.id = 'lulu-' + i;
+        body {
+            font-family: 'PingFang TC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 32px; letter-spacing: 10px; margin: 0; font-weight: 300; }
+        .header p { font-size: 13px; font-style: italic; opacity: 0.7; margin-top: 15px; }
+
+        /* 核心進度卡片 */
+        .main-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 40px;
+            padding: 40px 30px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+
+        .stats-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .badge { background: #efe5de; padding: 8px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+        .days-count { font-size: 14px; color: #a89a90; }
+
+        .progress-bar-bg { width: 100%; height: 12px; background: #eee5de; border-radius: 10px; }
+        .progress-bar-fill { height: 100%; background: var(--accent-color); width: 0%; border-radius: 10px; transition: 1s; }
+
+        /* 盲盒網格 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .box {
+            background: var(--card-bg);
+            border-radius: 20px;
+            aspect-ratio: 0.85;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.3s;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .box span { font-size: 10px; color: #c2b7b0; margin-bottom: 5px; }
+        .box b { font-size: 18px; color: transparent; transition: 0.3s; }
+        .box::after { content: "🐽"; font-size: 20px; position: absolute; transition: 0.3s; }
+
+        /* 開啟後的樣式 */
+        .box.done { background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.03); }
+        .box.done b { color: var(--primary-text); }
+        .box.done::after { opacity: 0; }
+        .box.done span { color: var(--accent-color); }
+
+        /* 底部結算浮窗 */
+        .footer-panel {
+            position: fixed;
+            bottom: 30px;
+            background: #5d524a;
+            color: white;
+            padding: 25px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 85%;
+            max-width: 400px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        .footer-info div { font-size: 12px; opacity: 0.7; margin-bottom: 5px; }
+        .footer-info b { font-size: 24px; font-weight: 400; }
+        .footer-info .remain { font-size: 14px; opacity: 0.8; display: block; margin-top: 5px; }
+
+        .btn-confirm {
+            background: #d4c1b5;
+            color: white;
+            border: none;
+            padding: 20px;
+            border-radius: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            font-size: 13px;
+        }
         
-        // 這一行最重要：確保數字被寫入 HTML
-        box.innerText = i; 
-        
-        box.onclick = () => {
-            if (saved.includes(i)) {
-                if(confirm("要把這隻豬豬放回去嗎？")) {
+        .btn-confirm svg { width: 20px; margin-bottom: 8px; fill: white; }
+
+        /* 抽獎按鈕樣式 */
+        .draw-btn {
+            margin-bottom: 20px;
+            background: none;
+            border: 1px solid var(--accent-color);
+            padding: 8px 25px;
+            border-radius: 20px;
+            color: var(--primary-text);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>3 6 5 天 支 付 挑 戰</h1>
+        <p>將每天的小錢，支付給未來的自己</p>
+    </div>
+
+    <div class="main-card">
+        <div class="stats-top">
+            <div class="badge">達成率 <span id="percent">0.0</span>%</div>
+            <div class="days-count">已付清 <span id="count">0</span> / 365 天</div>
+        </div>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="pb"></div>
+        </div>
+    </div>
+
+    <button class="draw-btn" onclick="randomDraw()">🎲 隨機抽取 LuLu 盲盒</button>
+
+    <div class="grid" id="grid"></div>
+
+    <div style="height: 150px;"></div> <div class="footer-panel">
+        <div class="footer-info">
+            <div>支付金額</div>
+            <b id="total">$ 0</b>
+            <span class="remain">支付餘額 $ <span id="remaining">66,795</span></span>
+        </div>
+        <button class="btn-confirm" onclick="alert('今天也要加油喔！🐽')">
+            <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+            確認付款
+        </button>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        let saved = JSON.parse(localStorage.getItem('lulu_luxury_data')) || [];
+        const TOTAL_SUM = 66795;
+
+        function update() {
+            const sum = saved.reduce((a, b) => a + b, 0);
+            const count = saved.length;
+            const p = ((count / 365) * 100).toFixed(1);
+
+            document.getElementById('total').innerText = '$ ' + sum.toLocaleString();
+            document.getElementById('remaining').innerText = (TOTAL_SUM - sum).toLocaleString();
+            document.getElementById('percent').innerText = p;
+            document.getElementById('count').innerText = count;
+            document.getElementById('pb').style.width = p + '%';
+        }
+
+        for (let i = 1; i <= 365; i++) {
+            const box = document.createElement('div');
+            box.className = 'box' + (saved.includes(i) ? ' done' : '');
+            box.id = 'box-' + i;
+            box.innerHTML = `<span>D${i}</span><b>$${i}</b>`;
+            box.onclick = () => {
+                if (saved.includes(i)) {
                     saved = saved.filter(n => n !== i);
                     box.classList.remove('done');
+                } else {
+                    saved.push(i);
+                    box.classList.add('done');
                 }
-            } else {
-                saved.push(i);
-                box.classList.add('done');
-                box.classList.remove('highlight');
-            }
-            localStorage.setItem('lulu_savings', JSON.stringify(saved));
-            updateDisplay();
-        };
-        grid.appendChild(box);
-    }
+                localStorage.setItem('lulu_luxury_data', JSON.stringify(saved));
+                update();
+            };
+            grid.appendChild(box);
+        }
 
-    // 抽獎邏輯
-    function drawLulu() {
-        const pool = [];
-        for(let i=1; i<=365; i++) if(!saved.includes(i)) pool.push(i);
-        if(pool.length === 0) return alert("全部豬豬都解鎖啦！🐷✨");
-        const activeHighlight = document.querySelector('.highlight');
-        if(activeHighlight) activeHighlight.classList.remove('highlight');
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        const target = document.getElementById('lulu-' + pick);
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        target.classList.add('highlight');
-        setTimeout(() => {
-            alert(`🎊 抽出！今天的 LuLu 盲盒金額：$${pick} 元`);
-        }, 600);
-    }
-    updateDisplay();
-</script>
+        function randomDraw() {
+            const pool = Array.from({length: 365}, (_, i) => i + 1).filter(i => !saved.includes(i));
+            if (pool.length === 0) return alert("完成挑戰囉！");
+            const pick = pool[Math.floor(Math.random() * pool.length)];
+            const el = document.getElementById('box-' + pick);
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => alert(`🎲 今日 LuLu 盲盒金額：$${pick}`), 500);
+        }
+
+        update();
+    </script>
+</body>
+</html>
