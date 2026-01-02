@@ -3,196 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>365天存錢計畫</title>
+    <title>365天盲盒存錢挑戰</title>
     <style>
         :root {
-            --primary-color: #6c5ce7;
-            --success-color: #00b894;
-            --bg-color: #f9f9fb;
-            --card-bg: #ffffff;
-            --text-color: #2d3436;
+            --primary: #ff7675;
+            --secondary: #fab1a0;
+            --bg: #fff5f5;
+            --box-bg: #ffeaa7;
         }
+        body { font-family: 'PingFang TC', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(255,118,117,0.15); width: 100%; max-width: 600px; text-align: center; }
+        h1 { color: var(--primary); margin: 0 0 10px 0; font-size: 24px; }
+        
+        .progress-section { margin: 20px 0; }
+        .progress-bar-bg { width: 100%; height: 15px; background: #eee; border-radius: 10px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #fab1a0, #ff7675); width: 0%; transition: 0.8s; }
+        
+        .stats { display: flex; justify-content: space-around; margin-bottom: 20px; }
+        .stat-item b { font-size: 20px; color: var(--primary); display: block; }
+        .stat-item span { font-size: 12px; color: #b2bec3; }
 
-        body {
-            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        .random-btn { 
+            background: var(--primary); color: white; border: none; padding: 12px 25px; 
+            border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer;
+            margin-bottom: 25px; transition: 0.3s; box-shadow: 0 4px 15px rgba(255,118,117,0.4);
         }
+        .random-btn:active { transform: scale(0.9); }
 
-        .container {
-            max-width: 1000px;
-            width: 100%;
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); gap: 8px; }
+        .box { 
+            aspect-ratio: 1; background: var(--box-bg); border-radius: 10px; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 14px; cursor: pointer; transition: 0.3s; color: transparent;
+            position: relative; border: 2px solid transparent;
         }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
+        /* 盲盒未開啟的圖示 */
+        .box::before { content: "🎁"; color: #e67e22; font-size: 18px; position: absolute; }
+        
+        /* 已開啟的狀態 */
+        .box.done { 
+            background: var(--primary); color: white; transform: rotate(360deg); 
+            box-shadow: 0 4px 8px rgba(255,118,117,0.3); font-weight: bold;
         }
+        .box.done::before { content: ""; }
 
-        h1 { color: var(--primary-color); margin-bottom: 10px; }
-
-        /* 統計數據卡片 */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--primary-color);
-            margin-top: 5px;
-        }
-
-        /* 存錢網格 */
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-            gap: 10px;
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-
-        .money-box {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #edf2f7;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            user-select: none;
-        }
-
-        .money-box:hover {
-            transform: scale(1.05);
-            background-color: #e2e8f0;
-        }
-
-        .money-box.completed {
-            background-color: var(--success-color);
-            color: white;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
-        }
-
-        /* 進度條 */
-        .progress-container {
-            width: 100%;
-            height: 20px;
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            margin-top: 10px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #a29bfe, #6c5ce7);
-            width: 0%;
-            transition: width 0.5s ease;
-        }
+        /* 被隨機抽中的閃爍效果 */
+        .box.highlight { border: 3px solid #d63031; transform: scale(1.2); z-index: 10; animation: blink 0.5s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <h1>📅 365天存錢挑戰</h1>
-        <p>每天存下一點點，一年後你將擁有 $66,795</p>
-        <div class="progress-container">
-            <div class="progress-bar" id="progressBar"></div>
+    <div class="card">
+        <h1>🍓 365天盲盒存錢</h1>
+        <p style="color: #636e72; font-size: 14px;">點擊🎁開啟驚喜金額</p>
+        
+        <div class="progress-section">
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="pb"></div></div>
         </div>
-    </header>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div>累積金額</div>
-            <div class="stat-value" id="totalSaved">$0</div>
+        <div class="stats">
+            <div class="stat-item"><b id="total">$0</b><span>累積金額</span></div>
+            <div class="stat-item"><b id="percent">0%</b><span>完成進度</span></div>
+            <div class="stat-item"><b id="count">0/365</b><span>存錢天數</span></div>
         </div>
-        <div class="stat-card">
-            <div>完成天數</div>
-            <div class="stat-value" id="daysCompleted">0 / 365</div>
-        </div>
-        <div class="stat-card">
-            <div>剩餘目標</div>
-            <div class="stat-value" id="remainingAmount">$66,795</div>
-        </div>
+
+        <button class="random-btn" onclick="drawBox()">🎲 抽今天的盲盒</button>
+
+        <div class="grid" id="grid"></div>
     </div>
 
-    <div class="grid-container" id="grid">
-        </div>
-</div>
+    <script>
+        const grid = document.getElementById('grid');
+        let saved = JSON.parse(localStorage.getItem('365_blind_data')) || [];
+        
+        function update() {
+            const sum = saved.reduce((a, b) => a + b, 0);
+            document.getElementById('total').innerText = '$' + sum.toLocaleString();
+            const p = ((saved.length / 365) * 100).toFixed(1);
+            document.getElementById('percent').innerText = p + '%';
+            document.getElementById('pb').style.width = p + '%';
+            document.getElementById('count').innerText = `${saved.length}/365`;
+        }
 
-<script>
-    const grid = document.getElementById('grid');
-    const totalSavedEl = document.getElementById('totalSaved');
-    const daysCompletedEl = document.getElementById('daysCompleted');
-    const remainingAmountEl = document.getElementById('remainingAmount');
-    const progressBar = document.getElementById('progressBar');
-
-    const TOTAL_SUM = 66795; // 1+2...+365 的總和
-    let completedDays = JSON.parse(localStorage.getItem('savedDays')) || [];
-
-    function init() {
+        // 初始化格子
         for (let i = 1; i <= 365; i++) {
-            const box = document.createElement('div');
-            box.classList.add('money-box');
-            if (completedDays.includes(i)) {
-                box.classList.add('completed');
+            const div = document.createElement('div');
+            div.className = 'box' + (saved.includes(i) ? ' done' : '');
+            div.id = 'box-' + i;
+            div.innerText = i;
+            div.onclick = () => toggleBox(i);
+            grid.appendChild(div);
+        }
+
+        function toggleBox(i) {
+            const el = document.getElementById('box-' + i);
+            if (saved.includes(i)) {
+                if(confirm(`確定要取消第 ${i} 天的紀錄嗎？`)) {
+                    saved = saved.filter(n => n !== i);
+                    el.classList.remove('done');
+                }
+            } else {
+                saved.push(i);
+                el.classList.add('done');
+                el.classList.remove('highlight');
             }
-            box.innerText = i;
-            box.onclick = () => toggleDay(i, box);
-            grid.appendChild(box);
+            localStorage.setItem('365_blind_data', JSON.stringify(saved));
+            update();
         }
-        updateStats();
-    }
 
-    function toggleDay(day, element) {
-        if (completedDays.includes(day)) {
-            completedDays = completedDays.filter(d => d !== day);
-            element.classList.remove('completed');
-        } else {
-            completedDays.push(day);
-            element.classList.add('completed');
+        function drawBox() {
+            // 找出還沒存的數字
+            const remaining = [];
+            for(let i=1; i<=365; i++) {
+                if(!saved.includes(i)) remaining.push(i);
+            }
+            
+            if(remaining.length === 0) {
+                alert("恭喜！你已經完成 365 天挑戰了！🎉");
+                return;
+            }
+
+            // 清除之前的亮點
+            const oldHighlight = document.querySelector('.highlight');
+            if(oldHighlight) oldHighlight.classList.remove('highlight');
+
+            // 隨機抽一個
+            const randomIndex = Math.floor(Math.random() * remaining.length);
+            const chosen = remaining[randomIndex];
+            const chosenEl = document.getElementById('box-' + chosen);
+            
+            // 捲動到那個位置並閃爍
+            chosenEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            chosenEl.classList.add('highlight');
+            
+            setTimeout(() => {
+                alert(`🎲 今日抽到的盲盒金額是：$${chosen} 元！\n快把它存起來並點擊格吧！`);
+            }, 500);
         }
-        localStorage.setItem('savedDays', JSON.stringify(completedDays));
-        updateStats();
-    }
 
-    function updateStats() {
-        const currentSum = completedDays.reduce((a, b) => a + b, 0);
-        const count = completedDays.length;
-        const progress = (count / 365) * 100;
-
-        totalSavedEl.innerText = `$${currentSum.toLocaleString()}`;
-        daysCompletedEl.innerText = `${count} / 365`;
-        remainingAmountEl.innerText = `$${(TOTAL_SUM - currentSum).toLocaleString()}`;
-        progressBar.style.width = `${progress}%`;
-    }
-
-    init();
-</script>
-
+        update();
+    </script>
 </body>
-
 </html>
